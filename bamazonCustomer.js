@@ -30,6 +30,7 @@ function displayItems() {
         for (var i = 0; i < res.length; i++) {
             console.log(`Item id: ${res[i].item_id} || Item name: ${res[i].product_name} || Price: $${res[i].price}`)
         }
+        purchase();
     });
 };
 
@@ -37,7 +38,7 @@ function purchase() {
     inquirer
         .prompt([
             {
-                name: "product_id",
+                name: "item_id",
                 type: "input",
                 message: "What is the ID of the product you would like to buy?",
                 validate: function (value) {
@@ -59,7 +60,22 @@ function purchase() {
                 }
             }
         ])
-        .then(function(answer) {
-            
+        .then(function (answer) {
+            var query = "SELECT * FROM products WHERE ?"
+            connection.query(query, { item_id: answer.item_id }, function (err, res) {
+                if (err) throw err;
+                console.log(res);
+                if (res[0].stock_quantity > answer.amount) {
+                    console.log(`Your purchase total is: ${res[0].price * answer.amount}`)
+                    res[0].stock_quantity -= answer.amount;
+                    connection.query("UPDATE products SET stock_quantity = " + res[0].stock_quantity + " WHERE item_id = " + answer.item_id, function(err, res) {
+                        if (err) throw err;
+                        console.log(res);
+                    });
+                    
+                } else {
+                    console.log("Insufficient quantity!");
+                }
+            })
         })
 }
