@@ -1,5 +1,6 @@
 var mysql = require("mysql");
 var inquirer = require("inquirer");
+const cTable = require('console.table')
 
 var connection = mysql.createConnection({
   host: "localhost",
@@ -53,38 +54,97 @@ function managerOptions() {
 }
 
 function viewProducts() {
-  var query = "SELECT * FROM products";
+  var query = "SELECT item_id, product_name, price, stock_quantity FROM products";
   connection.query(query, function (err, res) {
     if (err) throw err;
-    for (var i = 0; i < res.length; i++) {
-      console.log(`Item id: ${res[i].item_id} || Item: ${res[i].product_name} || Price: ${res[i].price} || In stock: ${res[i].stock_quantity}`);
-    };
+    console.table(res);
+    managerOptions();
   })
 };
 
 function viewInventory() {
-  var query = "SELECT * FROM products WHERE stock_quantity < 5";
+  var query = "SELECT product_name, stock_quantity FROM products WHERE stock_quantity < 5";
   connection.query(query, function (err, res) {
     if (err) throw err;
     console.log("Items running low on inventory: ");
-    for (var i = 0; i < res.length; i++) {
-      console.log(`Item: ${res[i].product_name} || Quantity remaining: ${res[i].stock_quantity}`);
-    }
+    console.table(res);
+    // for (var i = 0; i < res.length; i++) {
+    //   console.log(`Item: ${res[i].product_name} || Quantity remaining: ${res[i].stock_quantity}`);
+    // }
+    managerOptions();
   })
 };
 
 function addInventory() {
   inquirer
+    .prompt({
+      name: "addMore",
+      type: "confirm",
+      message: "Would you like to restock an item?"
+    })
+    .then(function (answer) {
+      if (answer.addMore) {
+        var query = "SELECT item_id, product_name, stock_quantity FROM products"
+        connection.query(query, function (err, res) {
+          console.table(res);
+          inquirer
+          .prompt({
+            name: "restockItem",
+            type: "input",
+            message: "What item would you like to restock? Use item id",
+            validate: function (value) {
+              if (isNaN(value) === false) {
+                return true;
+              }
+              return false;
+            }
+          })
+          .then(function (answer) {
+            var query = "UPDATE products SET stock_quantity = stock_quantity+20 WHERE item_id = " + answer.restockItem;
+            connection.query(query, function (err, res) {
+              if (err) throw err;
+            })
+            connection.query("SELECT * FROM products WHERE item_id = " + answer.restockItem, function (err, res) {
+              if (err) throw err;
+              console.log(`New ${res[0].product_name} quantity: ${res[0].stock_quantity}\n`);
+              managerOptions();
+            })
+          })
+        })        
+      } else {
+        managerOptions();
+      }
+    })
+};
+
+function addProduct() {
+  inquirer
     .prompt([
       {
-        name: "addMore",
-        type: "confirm",
-        message: "Would you like to restock an item?"
+        name: "product",
+        type: "input",
+        message: "What product would you like to add?"
       },
       {
-        name: "restockItem",
+        name: "department",
         type: "input",
-        message: "What item would you like to restock? Use item id",
+        message: "What department will the product be in?"
+      },
+      {
+        name: "price",
+        type: "input",
+        message: "How much will the item cost?",
+        validate: function (value) {
+          if (isNaN(value) === false) {
+            return true;
+          }
+          return false;
+        }
+      },
+      {
+        name: "quantity",
+        type: "input",
+        message: "How many do you want in stock?",
         validate: function (value) {
           if (isNaN(value) === false) {
             return true;
@@ -93,13 +153,10 @@ function addInventory() {
         }
       }
     ])
-    .then(function(answer) {
-      if (answer.addMore) {
-        
-      }
-    })
-};
-
-function addProduct() {
-
+    .then(function (answer) {
+      connection.query("INSERT INTO products(product_name, department_name, price, stock_quantity) VALUES('" + answer.product + "', '" + answer.department + "', " + answer.price + ", " + answer.quantity + ")", function (err, res) {
+        console.log(`New item: \n${answer.product} \nDepartment: ${answer.department} \nItem price: ${answer.price} \nIn stock: ${answer.quantity}`);
+      });
+      managerOptions();
+    });
 }

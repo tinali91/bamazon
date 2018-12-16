@@ -1,5 +1,6 @@
 var mysql = require("mysql");
 var inquirer = require("inquirer");
+const cTable = require('console.table')
 
 var connection = mysql.createConnection({
     host: "localhost",
@@ -27,9 +28,10 @@ function displayItems() {
         if (err) throw err;
         // console.log(res);
         console.log("Items for sale: ")
-        for (var i = 0; i < res.length; i++) {
-            console.log(`Item id: ${res[i].item_id} || Item name: ${res[i].product_name} || Price: $${res[i].price}`)
-        }
+        console.table(res)
+        // for (var i = 0; i < res.length; i++) {
+        //     console.log(`Item id: ${res[i].item_id} || Item name: ${res[i].product_name} || Price: $${res[i].price}`)
+        // }
         purchase();
     });
 };
@@ -64,15 +66,13 @@ function purchase() {
             var query = "SELECT * FROM products WHERE ?"
             connection.query(query, { item_id: answer.item_id }, function (err, res) {
                 if (err) throw err;
-                console.log(res);
                 if (res[0].stock_quantity > answer.amount) {
-                    console.log(`Your purchase total is: ${res[0].price * answer.amount}`)
+                    console.log(`Your purchase total is: ${(res[0].price * answer.amount).toFixed(2)}`)
                     res[0].stock_quantity -= answer.amount;
-                    connection.query("UPDATE products SET stock_quantity = " + res[0].stock_quantity + " WHERE item_id = " + answer.item_id, function(err, res) {
+                    console.log(`Left in stock: ${res[0].stock_quantity}`)
+                    connection.query("UPDATE products SET stock_quantity = " + res[0].stock_quantity + " WHERE item_id = " + answer.item_id, function (err, res) {
                         if (err) throw err;
-                        console.log(res);
                     });
-                    
                 } else {
                     console.log("Insufficient quantity!");
                 }
